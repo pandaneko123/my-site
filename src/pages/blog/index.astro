@@ -1,0 +1,12 @@
+---
+import PostList from '../../components/PostList.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getPosts } from '../../utils/posts';
+
+const posts = await getPosts();
+---
+
+<BaseLayout title="ブログ" description="記事の一覧">
+	<h1>ブログ</h1>
+	<PostList posts={posts} />
+</BaseLayout>

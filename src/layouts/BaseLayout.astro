@@ -1,0 +1,33 @@
+---
+// 全ページ共通の外枠（<head>・ヘッダー・フッター）。新しいページはこれで囲むだけでよい。
+import type { ImageMetadata } from 'astro';
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import { SITE_DESCRIPTION, SITE_LANG, SITE_TITLE } from '../consts';
+
+interface Props {
+	title?: string;
+	description?: string;
+	image?: ImageMetadata;
+	/** main 要素の最大幅を広げたいページ用（例: 一覧や表） */
+	wide?: boolean;
+}
+
+const { title = SITE_TITLE, description = SITE_DESCRIPTION, image, wide = false } = Astro.props;
+---
+
+<!doctype html>
+<html lang={SITE_LANG}>
+	<head>
+		<BaseHead title={title} description={description} image={image} />
+		<slot name="head" />
+	</head>
+	<body>
+		<Header />
+		<main class:list={{ wide }}>
+			<slot />
+		</main>
+		<Footer />
+	</body>
+</html>

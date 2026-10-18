@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { countTags, getPosts } from '../../utils/posts';
+
+const tags = countTags(await getPosts());
+---
+
+<BaseLayout title="タグ" description="タグの一覧">
+	<h1>タグ</h1>
+	{tags.length === 0 && <p>まだタグがありません。</p>}
+	<div>
+		{
+			tags.map(([tag, count]) => (
+				<a class="tag" href={`/tags/${encodeURIComponent(tag)}/`}>
+					#{tag} ({count})
+				</a>
+			))
+		}
+	</div>
+</BaseLayout>

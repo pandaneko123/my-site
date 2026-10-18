@@ -1,0 +1,30 @@
+---
+import PostList from '../components/PostList.astro';
+import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getPosts } from '../utils/posts';
+
+const latestPosts = (await getPosts()).slice(0, 5);
+---
+
+<BaseLayout>
+	<section class="intro">
+		<h1>{SITE_TITLE}</h1>
+		<p>{SITE_DESCRIPTION}</p>
+	</section>
+
+	<section>
+		<h2>新着記事</h2>
+		<PostList posts={latestPosts} />
+		<p class="more"><a href="/blog">記事一覧へ →</a></p>
+	</section>
+</BaseLayout>
+<style>
+	.intro {
+		margin-bottom: 2.5em;
+	}
+	.more {
+		margin-top: 1em;
+		text-align: right;
+	}
+</style>
