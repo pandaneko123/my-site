@@ -49,6 +49,8 @@ draft: true               # true なら公開しない（pnpm dev では表示�
 
 ## 構成
 
+全体像は [docs/system-architecture.md](docs/system-architecture.md)（システム構成）と [docs/blog-flow.md](docs/blog-flow.md)（処理フロー）。
+
 - `src/consts.ts` … サイト名・説明・ナビゲーション
 - `src/layouts/BaseLayout.astro` … 全ページ共通の外枠。新しいページはこれで囲む
 - `src/pages/` … ここにファイルを置くとページになる（例: `src/pages/tools/foo.astro` → `/tools/foo/`）
