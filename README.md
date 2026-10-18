@@ -34,6 +34,12 @@ draft: true               # true なら公開しない（pnpm dev では表示�
 ---
 ```
 
+### About などのページ
+
+`My knowledge/Blog/Pages/` に置いた `.md` はブログ記事ではなく単独のページになる（`about.md` → `/about/`）。
+先頭情報は `title` `description` `slug` `draft` が使える。`blog` `tags` など既存のページと同じ URL は作れない。
+メニューに出すときは `src/consts.ts` の `NAV_LINKS` に1行足す。
+
 ### Obsidian の書き方の変換
 
 - `[[記事名]]` `[[記事名|表示名]]` … Blog フォルダ内の記事ならリンク、それ以外は文字だけ残す

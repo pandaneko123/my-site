@@ -1,0 +1,23 @@
+---
+// Obsidian の Blog/Pages/ に置いたページ（about.md → /about/ など）を表示する。
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+	const pages = await getCollection('pages', ({ data }) => import.meta.env.DEV || !data.draft);
+	return pages.map((page) => ({
+		params: { page: page.id },
+		props: page,
+	}));
+}
+
+const page = Astro.props;
+const { Content } = await render(page);
+---
+
+<BaseLayout title={page.data.title} description={page.data.description}>
+	<div class="prose">
+		<h1>{page.data.title}</h1>
+		<Content />
+	</div>
+</BaseLayout>

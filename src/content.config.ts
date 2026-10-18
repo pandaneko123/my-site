@@ -20,4 +20,14 @@ const blog = defineCollection({
 		}),
 });
 
-export const collections = { blog };
+// About などの固定ページ。元データは Obsidian の Blog/Pages/ フォルダ。
+const pages = defineCollection({
+	loader: glob({ base: './src/content/pages', pattern: '**/*.{md,mdx}' }),
+	schema: z.object({
+		title: z.string(),
+		description: z.string(),
+		draft: z.boolean().default(false),
+	}),
+});
+
+export const collections = { blog, pages };
