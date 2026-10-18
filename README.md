@@ -10,21 +10,36 @@ Astro で作った個人ブログ。Cloudflare Pages で公開する。
 | `pnpm build` | 本番用に `dist/` へビルド |
 | `pnpm preview` | ビルド結果をローカルで確認 |
 
-## 記事の書き方
+## 記事の書き方（Obsidian で書く）
 
-`src/content/blog/` に `.md`（または `.mdx`）を置く。ファイル名が URL になる（`hello-world.md` → `/blog/hello-world/`）。
+記事の元データは Obsidian の `My knowledge/Blog/` フォルダ。
+`src/content/blog/` は毎回作り直されるので、**直接編集しない**こと。
+
+1. Obsidian の `My knowledge/Blog/` に `.md` を書く（直すときもここを直す）
+2. `pnpm blog:publish` を実行（コピー → ビルド確認 → コミット → push）
+
+コピーだけして手元で見たいときは `pnpm blog:sync` のあと `pnpm dev`。
+
+### 記事の先頭情報（すべて省略可）
 
 ```md
 ---
-title: '記事タイトル'
-description: '一覧や検索結果に出る説明文'
-pubDate: '2026-10-18'
-tags: ['タグ1', 'タグ2']   # 省略可
-draft: true               # 省略可。true なら公開されない
+date: 2026-10-18          # 公開日。省略時はファイル名の日付 → 更新日時
+tags: [日記, 住まい探し]
+title: 記事タイトル        # 省略時は本文先頭の「# 見出し」→ ファイル名
+description: 説明文        # 省略時は本文の最初の段落
+slug: my-post             # URL（/blog/my-post/）。省略時はファイル名
+updated: 2026-10-20       # 更新日
+draft: true               # true なら公開しない（pnpm dev では表示）
 ---
-
-本文
 ```
+
+### Obsidian の書き方の変換
+
+- `[[記事名]]` `[[記事名|表示名]]` … Blog フォルダ内の記事ならリンク、それ以外は文字だけ残す
+- `![[画像.png]]` … 保管庫から画像を探してコピー
+- `%%コメント%%` … 公開しない
+- `==ハイライト==` … マーカー表示
 
 ## 構成
 
