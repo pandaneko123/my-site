@@ -6,7 +6,7 @@ import { defineConfig } from 'astro/config';
 
 // https://astro.build/config
 export default defineConfig({
-	// 公開URL。Cloudflare Pages で公開したら実際のURL（または独自ドメイン）に書き換える
-	site: 'https://my-site.pages.dev',
+	// 公開URL（独自ドメインを付けたらここを書き換える）
+	site: 'https://my-site-c4e.pages.dev',
 	integrations: [mdx(), sitemap()],
 });
