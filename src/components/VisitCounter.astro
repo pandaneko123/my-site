@@ -1,0 +1,78 @@
+---
+// フッターの訪問者数（今日／累計）。数は functions/api/views.js から取ってくる。
+// 記事ページでは、同じスクリプトが記事の閲覧数（data-page-views）も埋める。
+// API が使えないとき（pnpm dev や DB 未設定）は何も表示しない。
+---
+
+<p class="visits" data-visits hidden>
+	今日 <span data-visits-today>-</span> 人<span class="sep">／</span>累計 <span data-visits-total>-</span> 人
+</p>
+
+<script>
+	const VISITED_KEY = 'visit-counter:visited';
+	const pageKey = (path: string) => `visit-counter:page:${path}`;
+
+	// プライベートブラウズなどで使えないことがあるので、失敗しても止まらないようにする
+	function hasFlag(key: string) {
+		try {
+			return sessionStorage.getItem(key) === '1';
+		} catch {
+			return false;
+		}
+	}
+	function setFlag(key: string) {
+		try {
+			sessionStorage.setItem(key, '1');
+		} catch {}
+	}
+
+	function fill(selector: string, value: number) {
+		document.querySelectorAll(selector).forEach((el) => {
+			el.textContent = value.toLocaleString('ja-JP');
+		});
+	}
+
+	async function main() {
+		const path = location.pathname.endsWith('/') ? location.pathname : `${location.pathname}/`;
+		const visited = hasFlag(VISITED_KEY);
+		// 同じセッションで同じページを開き直しても数えない。自動操作のブラウザも数えない
+		const count = !hasFlag(pageKey(path)) && !navigator.webdriver;
+
+		let res: Response;
+		try {
+			res = count
+				? await fetch('/api/views', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ path, newVisit: !visited }),
+					})
+				: await fetch(`/api/views?path=${encodeURIComponent(path)}`);
+		} catch {
+			return;
+		}
+		if (!res.ok) return;
+		const data: { page: number; today: number; total: number } = await res.json();
+
+		if (count) {
+			setFlag(VISITED_KEY);
+			setFlag(pageKey(path));
+		}
+		fill('[data-visits-today]', data.today);
+		fill('[data-visits-total]', data.total);
+		fill('[data-page-views-count]', data.page);
+		document.querySelectorAll<HTMLElement>('[data-visits], [data-page-views]').forEach((el) => {
+			el.hidden = false;
+		});
+	}
+
+	main();
+</script>
+
+<style>
+	.visits {
+		margin: 0.5em 0 0;
+	}
+	.sep {
+		margin: 0 0.5em;
+	}
+</style>

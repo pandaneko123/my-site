@@ -7,7 +7,7 @@
 
 ## 1. 概要
 
-- **サイトの種類**：静的サイト（SSG）。ビルドのときに全ページを HTML にしておき、アクセスがあったらそのファイルを返すだけ。サーバー側で動くプログラムもデータベースもない
+- **サイトの種類**：静的サイト（SSG）。ビルドのときに全ページを HTML にしておき、アクセスがあったらそのファイルを返すだけ。ページ自体はサーバー側の処理なしで返す。例外は訪問者数カウンターだけで、Cloudflare Pages Functions（小さなサーバー処理）と D1（データベース）を使う
 - **書く場所**：Obsidian（Markdown）
 - **作る道具**：Astro 7（静的サイトジェネレーター）
 - **ソースの置き場所**：GitHub（`pandaneko123/my-site`）
@@ -44,6 +44,8 @@ flowchart TB
 	subgraph CF["Cloudflare（無料プラン）"]
 		CB["Pages ビルド環境<br>pnpm build → dist/"]
 		CDN["CDN（世界中の拠点）<br>静的ファイルを HTTPS で配信"]
+		FN["Pages Functions<br>/api/views（訪問者数）"]
+		D1[("D1 データベース<br>page_views 表")]
 	end
 
 	U["読者のブラウザ<br>my-site-c4e.pages.dev"]
@@ -57,6 +59,8 @@ flowchart TB
 	GR -- "push を検知（GitHub 連携）" --> CB
 	CB -- "デプロイ" --> CDN
 	CDN -- "HTTPS" --> U
+	U -- "訪問者数を送る・読む" --> FN
+	FN --> D1
 ```
 
 ## 3. 構成要素の詳細
@@ -159,7 +163,32 @@ git で管理しないもの（`.gitignore`）：`dist/`、`.astro/`、`node_mod
 
 ※ 設定内容は README の手順とリポジトリの設定ファイルからまとめたもの。Cloudflare ダッシュボードの実際の画面はここでは確認していない。
 
-### 3.4 公開サイト
+### 3.4 訪問者数カウンター
+
+フッターに「今日 ○ 人／累計 ○ 人」、記事の日付の横に「○ 回閲覧」を表示する。
+
+| 項目 | 内容 |
+|---|---|
+| 表示する部品 | `src/components/VisitCounter.astro`（フッターに入っている）。記事の閲覧数の表示場所は `src/layouts/BlogPost.astro` |
+| API | `functions/api/views.js`（Cloudflare Pages Functions）。`/api/views` で動く |
+| データベース | Cloudflare D1。Pages プロジェクトに `DB` という名前で結び付ける。表（`page_views`）は API が最初に自動で作る |
+| 数え方 | 訪問者：ブラウザのセッション（タブを閉じるまで）ごとに 1 回。閲覧：セッションごと・ページごとに 1 回。開き直し・再読み込みは数えない |
+| 数えないもの | 自動操作のブラウザ（`navigator.webdriver`）、存在しないページ（404）、サイト外の URL |
+| 「今日」の区切り | 日本時間の 0 時 |
+| 動かないとき | `pnpm dev` や DB 未設定のときは API が使えないので、数字の部分は表示されない（ページは普通に見られる） |
+| 手元での確認 | `wrangler pages dev` でローカルの D1 を使って確認できる（[blog-flow.md](blog-flow.md) の 8 章） |
+
+表の中身（集計済みの行だけを持つので、1 回の表示で読むのは 3 行だけ）：
+
+| path | day | count の意味 |
+|---|---|---|
+| `/blog/xxx/` など | `total` | そのページの累計閲覧数 |
+| `*` | `2026-10-25` など | その日のサイト全体の訪問者数 |
+| `*` | `total` | サイト全体の累計訪問者数 |
+
+人数はおおよその数。Cookie などで人を識別はしていないので、別のブラウザや別の日に来た同じ人は別の訪問者として数える。
+
+### 3.5 公開サイト
 
 | URL | 中身 | 元になるファイル |
 |---|---|---|
@@ -169,6 +198,8 @@ git で管理しないもの（`.gitignore`）：`dist/`、`.astro/`、`node_mod
 | `/tags/` | タグ一覧 | `src/pages/tags/index.astro` |
 | `/tags/<タグ>/` | タグごとの記事一覧 | `src/pages/tags/[tag].astro` |
 | `/<slug>/` | About などのページ | `src/pages/[page].astro` + `src/content/pages/` |
+| `/api/views` | 訪問者数 API（ページではない） | `functions/api/views.js` |
+| 存在しない URL | 404 ページ | `src/pages/404.astro` |
 | `/rss.xml` | RSS フィード | `src/pages/rss.xml.js` |
 | `/sitemap-index.xml` | サイトマップ（検索エンジン向け） | `@astrojs/sitemap` が自動生成 |
 
@@ -199,7 +230,7 @@ git で管理しないもの（`.gitignore`）：`dist/`、`.astro/`、`node_mod
 - `site: 'https://my-site-c4e.pages.dev'`（canonical URL・RSS・サイトマップに使う）
 - `integrations: [mdx(), sitemap()]`
 - `markdown.remarkPlugins: [remarkBreaks]`
-- 出力モードは既定の `static`（アダプターなし。サーバーで動く処理はない）
+- 出力モードは既定の `static`（アダプターなし）。サーバーで動くのは `functions/` の訪問者数 API だけで、これは Astro ではなく Cloudflare Pages が直接動かす
 
 ## 5. 認証と接続
 
@@ -207,6 +238,7 @@ git で管理しないもの（`.gitignore`）：`dist/`、`.astro/`、`node_mod
 |---|---|---|
 | PC → GitHub（git push） | HTTPS | gh の credential helper → Windows の資格情報ストア |
 | GitHub → Cloudflare | Cloudflare の GitHub 連携（GitHub App） | Cloudflare と GitHub のアカウント側 |
+| Pages Functions → D1 | Pages プロジェクトの設定で結び付け（バインディング名 `DB`） | Cloudflare のアカウント側（キーはコードに入っていない） |
 | 読者 → Cloudflare | HTTPS | 不要（公開サイト） |
 
 リポジトリにパスワードや API キーは入っていない（`.env` も git 管理外）。
@@ -219,6 +251,7 @@ git で管理しないもの（`.gitignore`）：`dist/`、`.astro/`、`node_mod
 | 記事の画像 | Obsidian 保管庫（PC） | `src/content/*/_assets/` → GitHub |
 | サイトのコード・設定 | ローカルリポジトリ（PC） | GitHub |
 | 公開中のサイト | Cloudflare（`dist/` のデプロイ） | 過去のデプロイも Cloudflare に残る |
+| 訪問者数 | Cloudflare D1 | D1 の Time Travel で過去 7 日以内の状態に戻せる（無料プラン） |
 
 注意点：
 
@@ -231,6 +264,8 @@ git で管理しないもの（`.gitignore`）：`dist/`、`.astro/`、`node_mod
 |---|---|---|
 | GitHub | Free | 個人ブログの使い方なら制限にかからない |
 | Cloudflare Pages | Free | ビルド 500 回/月、1 サイトあたり 20,000 ファイル、1 ファイル 25MiB まで。帯域は無制限 |
+| Pages Functions | Free（Workers の無料枠） | 10 万リクエスト/日（1 ページ表示で 1 回使う） |
+| Cloudflare D1 | Free | 読み取り 500 万行/日、書き込み 10 万行/日、保存 5GB。1 回の表示で読み取り約 3 行、書き込み最大 3 行 |
 | Obsidian | 無料（Sync は有料オプション） | — |
 
 ※ 無料枠の数字は変わることがあるので、気になったときは各サービスの公式ページで確認する。

@@ -1,0 +1,13 @@
+---
+// 存在しない URL を開いたときのページ。
+// これがあると Cloudflare Pages は存在しない URL に 404 を返す（訪問者数 API が実在するページだけを数えるのにも使う）。
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="ページが見つかりません" description="お探しのページは見つかりませんでした。">
+	<div class="prose">
+		<h1>ページが見つかりません</h1>
+		<p>URL が間違っているか、ページが移動・削除された可能性があります。</p>
+		<p><a href="/">ホームへ戻る</a></p>
+	</div>
+</BaseLayout>

@@ -60,6 +60,11 @@ draft: true               # true なら公開しない（pnpm dev では表示�
 1. `src/pages/` に `.astro` ファイルを作り、`BaseLayout` で囲む
 2. `src/consts.ts` の `NAV_LINKS` に1行足す
 
+## 訪問者数カウンター
+
+フッターの「今日 ○ 人／累計 ○ 人」と記事の「○ 回閲覧」は、`functions/api/views.js`（Cloudflare Pages Functions）と Cloudflare D1 で数えている。
+D1 データベースを Pages プロジェクトに `DB` という名前で結び付けると動く。詳しくは [docs/system-architecture.md](docs/system-architecture.md)。
+
 ## 公開（Cloudflare Pages）
 
 1. GitHub にリポジトリを作って push

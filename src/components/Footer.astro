@@ -1,11 +1,13 @@
 ---
 import { SITE_AUTHOR } from '../consts';
+import VisitCounter from './VisitCounter.astro';
 
 const today = new Date();
 ---
 
 <footer>
 	&copy; {today.getFullYear()} {SITE_AUTHOR}
+	<VisitCounter />
 	<div class="links">
 		<a href="/rss.xml">RSS</a>
 	</div>

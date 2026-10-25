@@ -167,3 +167,19 @@ git add -A && git commit -m "変更内容" && git push
 | `記事に変更はありません。` | Obsidian 側で何も変わっていない | 正常。何もしなくてよい |
 | 公開サイトが変わらない | Cloudflare のビルド中、または失敗 | 1 分ほど待つ。直らなければ Cloudflare の Deployments を見る |
 | 記事を直したのに元に戻る | `src/content/` を直接直した | Obsidian 側を直す（`src/content/` は毎回作り直される） |
+| 訪問者数が表示されない | `pnpm dev` で見ている／D1 が Pages に結び付いていない | 正常（`pnpm dev` では出ない）。公開サイトで出ないときは、Cloudflare の Pages の設定で D1 のバインディング `DB` を確認する |
+
+## 8. 訪問者数カウンターを手元で確かめる
+
+訪問者数の API（`functions/api/views.js`）は Cloudflare 上で動くので、`pnpm dev` では動かない。
+手元で確かめるときは、Cloudflare の開発ツール wrangler でビルド結果を動かす。データベースは PC の中の仮のもの（`.wrangler/`、git 管理外）を使うので、本番の数には影響しない。
+
+```bash
+pnpm build
+```
+
+```bash
+pnpm dlx wrangler@4 pages dev dist --d1 DB=local-test --persist-to .wrangler/state
+```
+
+表示された URL（`http://localhost:8788` など）を開くと、フッターと記事に数が出る。止めるときは Ctrl+C。

@@ -33,6 +33,9 @@ const { title, description, pubDate, updatedDate, heroImage, tags = [] } = Astro
 							</span>
 						)
 					}
+					<span class="views" data-page-views hidden>
+						<span data-page-views-count>-</span> 回閲覧
+					</span>
 				</div>
 				<TagList tags={tags} />
 				<hr />
@@ -58,5 +61,8 @@ const { title, description, pubDate, updatedDate, heroImage, tags = [] } = Astro
 		margin-bottom: 0.5em;
 		font-size: 0.9em;
 		color: rgb(var(--gray));
+	}
+	.views::before {
+		content: '・';
 	}
 </style>
