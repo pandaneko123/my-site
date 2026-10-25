@@ -2,28 +2,55 @@
 // フッターの訪問者数（今日／累計）。数は functions/api/views.js から取ってくる。
 // 記事ページでは、同じスクリプトが記事の閲覧数（data-page-views）も埋める。
 // API が使えないとき（pnpm dev や DB 未設定）は何も表示しない。
+//
+// 数え方（同じブラウザかどうかは localStorage の記録で見分ける）:
+// - 訪問者: 同じブラウザはその日（日本時間）のうちは 1 人
+// - 閲覧:   同じブラウザ・同じページはその日のうちは 1 回
+// - URL に ?nocount を付けて 1 回開くと、そのブラウザはそれ以降数えない（?count で元に戻る）
 ---
 
 <p class="visits" data-visits hidden>
 	今日 <span data-visits-today>-</span> 人<span class="sep">／</span>累計 <span data-visits-total>-</span> 人
+	<span data-visits-ignored hidden>（このブラウザは数えていません）</span>
 </p>
 
 <script>
-	const VISITED_KEY = 'visit-counter:visited';
-	const pageKey = (path: string) => `visit-counter:page:${path}`;
+	const DAY_KEY = 'visit-counter:day';
+	const IGNORE_KEY = 'visit-counter:ignore';
+
+	/** その日にこのブラウザで数えたページ */
+	type DayRecord = { date: string; pages: string[] };
 
 	// プライベートブラウズなどで使えないことがあるので、失敗しても止まらないようにする
-	function hasFlag(key: string) {
+	function load(key: string) {
 		try {
-			return sessionStorage.getItem(key) === '1';
+			return localStorage.getItem(key);
 		} catch {
-			return false;
+			return null;
 		}
 	}
-	function setFlag(key: string) {
+	function save(key: string, value: string | null) {
 		try {
-			sessionStorage.setItem(key, '1');
+			if (value === null) localStorage.removeItem(key);
+			else localStorage.setItem(key, value);
 		} catch {}
+	}
+
+	/** 日本時間の今日の日付（YYYY-MM-DD）。API 側の「今日」と同じ区切り */
+	function todayJst() {
+		return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+	}
+
+	/** ?nocount / ?count を読んで記録し、URL からは消す（共有したときに付いていかないように） */
+	function applyIgnoreParam() {
+		const url = new URL(location.href);
+		const nocount = url.searchParams.has('nocount');
+		const count = url.searchParams.has('count');
+		if (!nocount && !count) return;
+		save(IGNORE_KEY, nocount ? '1' : null);
+		url.searchParams.delete('nocount');
+		url.searchParams.delete('count');
+		history.replaceState(null, '', url);
 	}
 
 	function fill(selector: string, value: number) {
@@ -33,10 +60,19 @@
 	}
 
 	async function main() {
+		applyIgnoreParam();
+		const ignored = load(IGNORE_KEY) === '1';
 		const path = location.pathname.endsWith('/') ? location.pathname : `${location.pathname}/`;
-		const visited = hasFlag(VISITED_KEY);
-		// 同じセッションで同じページを開き直しても数えない。自動操作のブラウザも数えない
-		const count = !hasFlag(pageKey(path)) && !navigator.webdriver;
+		const today = todayJst();
+
+		let record: DayRecord | null = null;
+		try {
+			record = JSON.parse(load(DAY_KEY) ?? 'null');
+		} catch {}
+		if (record?.date !== today || !Array.isArray(record.pages)) record = { date: today, pages: [] };
+		const newVisit = record.pages.length === 0;
+		// 今日すでに数えたページ、数えない設定のブラウザ、自動操作のブラウザは数えない
+		const count = !record.pages.includes(path) && !ignored && !navigator.webdriver;
 
 		let res: Response;
 		try {
@@ -44,7 +80,7 @@
 				? await fetch('/api/views', {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ path, newVisit: !visited }),
+						body: JSON.stringify({ path, newVisit }),
 					})
 				: await fetch(`/api/views?path=${encodeURIComponent(path)}`);
 		} catch {
@@ -54,14 +90,17 @@
 		const data: { page: number; today: number; total: number } = await res.json();
 
 		if (count) {
-			setFlag(VISITED_KEY);
-			setFlag(pageKey(path));
+			record.pages.push(path);
+			save(DAY_KEY, JSON.stringify(record));
 		}
 		fill('[data-visits-today]', data.today);
 		fill('[data-visits-total]', data.total);
 		fill('[data-page-views-count]', data.page);
 		document.querySelectorAll<HTMLElement>('[data-visits], [data-page-views]').forEach((el) => {
 			el.hidden = false;
+		});
+		document.querySelectorAll<HTMLElement>('[data-visits-ignored]').forEach((el) => {
+			el.hidden = !ignored;
 		});
 	}
 
