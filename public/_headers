@@ -1,0 +1,8 @@
+# Cloudflare Pages が全ページの応答に付けるヘッダー（セキュリティ用）
+# https://developers.cloudflare.com/pages/configuration/headers/
+/*
+  X-Frame-Options: DENY
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()

@@ -3,6 +3,8 @@
 // 元データは Obsidian 側。src/content/ の2つのフォルダは毎回作り直すので、直接編集しないこと。
 //
 // 使い方: pnpm blog:sync
+// --no-drafts を付けると下書き（draft: true / publish: false）をコピーしない。
+// GitHub のリポジトリは公開なので、pnpm blog:publish はこれを付けて下書きをコミットしないようにしている。
 // Obsidian のフォルダは環境変数 OBSIDIAN_BLOG_DIR で変更できる。
 
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -19,6 +21,7 @@ const PAGES_OUT_DIR = path.join(ROOT, 'src/content/pages');
 const ROUTES_DIR = path.join(ROOT, 'src/pages');
 const ASSET_DIR_NAME = '_assets';
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|avif|svg)$/i;
+const SKIP_DRAFTS = process.argv.includes('--no-drafts');
 
 if (!existsSync(SOURCE_DIR)) {
 	console.error(`Obsidian のフォルダが見つかりません: ${SOURCE_DIR}`);
@@ -91,16 +94,21 @@ function loadNote(file, kind) {
 	const name = path.basename(file, '.md');
 	const { data, body } = splitFrontmatter(readFileSync(file, 'utf-8'));
 	const slug = toSlug(String(data.slug ?? name));
+	const draft = data.draft === true || data.publish === false;
 	return kind === 'post'
-		? { kind, file, name, data, body, slug, outDir: BLOG_OUT_DIR, url: `/blog/${slug}/` }
-		: { kind, file, name, data, body, slug, outDir: PAGES_OUT_DIR, url: `/${slug}/` };
+		? { kind, file, name, data, body, slug, draft, outDir: BLOG_OUT_DIR, url: `/blog/${slug}/` }
+		: { kind, file, name, data, body, slug, draft, outDir: PAGES_OUT_DIR, url: `/${slug}/` };
 }
-const posts = postFiles.map((f) => loadNote(f, 'post'));
-const pages = pageFiles.map((f) => loadNote(f, 'page'));
+const allPosts = postFiles.map((f) => loadNote(f, 'post'));
+const allPages = pageFiles.map((f) => loadNote(f, 'page'));
+const isIncluded = (n) => !(SKIP_DRAFTS && n.draft);
+const posts = allPosts.filter(isIncluded);
+const pages = allPages.filter(isIncluded);
 const notes = [...posts, ...pages];
+// 下書きを外したときは、下書きへのリンクも文字だけになる
 const urlByName = new Map(notes.map((n) => [n.name, n.url]));
 
-const duplicated = [...findDuplicates(posts.map((n) => n.slug)), ...findDuplicates(pages.map((n) => n.slug))];
+const duplicated = [...findDuplicates(allPosts.map((n) => n.slug)), ...findDuplicates(allPages.map((n) => n.slug))];
 if (duplicated.length > 0) {
 	console.error(`URL（slug）が重複しています: ${duplicated.join(', ')}`);
 	process.exit(1);
@@ -180,7 +188,7 @@ for (const note of notes) {
 		body = body.slice(h1[0].length).replace(/^\s+/, '');
 	}
 	title ??= note.name;
-	const draft = note.data.draft === true || note.data.publish === false;
+	const { draft } = note;
 
 	let frontmatter = {
 		title: String(title),
@@ -210,3 +218,5 @@ for (const [dir, copied] of copiedImages) {
 }
 const imageCount = [...copiedImages.values()].reduce((sum, s) => sum + s.size, 0);
 console.log(`${posts.length} 件の記事、${pages.length} 件のページ、${imageCount} 件の画像をコピーしました。`);
+const skipped = allPosts.length + allPages.length - notes.length;
+if (skipped > 0) console.log(`下書き ${skipped} 件はコピーしていません（--no-drafts）。`);

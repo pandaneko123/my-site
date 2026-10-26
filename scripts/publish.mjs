@@ -7,7 +7,8 @@ import { execSync } from 'node:child_process';
 
 const run = (cmd) => execSync(cmd, { stdio: 'inherit' });
 
-run('node scripts/sync-obsidian.mjs');
+// リポジトリは公開なので、下書きはコミットしない（pnpm dev で下書きを見るときは pnpm blog:sync を使う）
+run('node scripts/sync-obsidian.mjs --no-drafts');
 run('pnpm build');
 
 run('git add src/content/blog src/content/pages');

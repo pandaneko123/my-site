@@ -28,7 +28,7 @@ flowchart TB
 			VS["VS Code"]
 			CC["Claude Code"]
 		end
-		subgraph REPO["ローカルリポジトリ C:\Users\pannd\dev\my-site"]
+		subgraph REPO["ローカルリポジトリ ~/dev/my-site"]
 			SC["scripts/<br>sync-obsidian.mjs・publish.mjs"]
 			SRC["src/<br>ページ・部品・記事"]
 			DIST["dist/<br>ビルド結果（git 管理外）"]
@@ -69,20 +69,20 @@ flowchart TB
 
 | 項目 | 内容 |
 |---|---|
-| OS | Windows 10 Home（10.0.19045） |
+| OS | Windows |
 | シェル | PowerShell 5.1 / Git Bash |
 | エディタ | Obsidian（記事）、VS Code（コード） |
 | AI アシスタント | Claude Code（Claude デスクトップアプリの Code タブ） |
 | Node.js | 24.14.0（`package.json` で `>=22.22.0` を要求） |
 | pnpm | 12.14.0（`package.json` の `packageManager` で固定） |
 | Git | 2.55.0（Windows 版）。改行コードは `core.autocrlf=true`（取り出すときに CRLF、保存するときに LF） |
-| GitHub CLI（gh） | `pandaneko123` でログイン済み。認証情報は Windows の資格情報ストア（keyring）に保存 |
+| GitHub CLI（gh） | ログイン済み。認証情報は OS の資格情報ストアに保存 |
 
 #### Obsidian 保管庫
 
 | 項目 | 内容 |
 |---|---|
-| 場所 | `C:\Users\pannd\obsidian\My knowledge` |
+| 場所 | `~/obsidian/My knowledge`（`my-site` から見て `../../obsidian/My knowledge`） |
 | ブログ記事 | `Blog/` 直下（とサブフォルダ）の `.md` |
 | 単独ページ | `Blog/Pages/` の `.md`（`about.md` → `/about/`） |
 | 画像 | 保管庫のどこに置いてもよい（同期のときにファイル名で探す） |
@@ -90,11 +90,11 @@ flowchart TB
 | 同期 | Obsidian Sync のコアプラグインはオンになっているが、契約して実際に同期しているかはこのPCの設定ファイルからはわからない |
 | 復元 | 「ファイルの復元」コアプラグインがオン（Obsidian 内に一定期間スナップショットが残る） |
 
-保管庫には、ブログ以外の個人的なノート（家計・仕事など）も入っている。サイトにコピーされるのは `Blog/` の中の `.md` と、そこから参照されている画像だけ。
+保管庫には、ブログ以外の個人的なノートも入っている。サイトにコピーされるのは `Blog/` の中の `.md` と、そこから参照されている画像だけ。
 
 #### ローカルリポジトリ
 
-場所は `C:\Users\pannd\dev\my-site`。中身は次のとおり。
+場所は `~/dev/my-site`。中身は次のとおり。
 
 ```text
 my-site/
@@ -109,7 +109,7 @@ my-site/
 ├─ scripts/
 │   ├─ sync-obsidian.mjs   Obsidian → src/content/ への変換・コピー
 │   └─ publish.mjs         同期 → ビルド → コミット → push
-├─ public/                 そのまま公開するファイル（favicon）
+├─ public/                 そのまま公開するファイル（favicon、セキュリティ用ヘッダーの _headers）
 ├─ src/
 │   ├─ consts.ts           サイト名・説明・著者・メニュー
 │   ├─ content.config.ts   記事（blog）とページ（pages）の型の定義
@@ -237,7 +237,7 @@ git で管理しないもの（`.gitignore`）：`dist/`、`.astro/`、`node_mod
 
 | 接続 | 方式 | 認証情報の置き場所 |
 |---|---|---|
-| PC → GitHub（git push） | HTTPS | gh の credential helper → Windows の資格情報ストア |
+| PC → GitHub（git push） | HTTPS | gh の credential helper → OS の資格情報ストア |
 | GitHub → Cloudflare | Cloudflare の GitHub 連携（GitHub App） | Cloudflare と GitHub のアカウント側 |
 | Pages Functions → D1 | Pages プロジェクトの設定で結び付け（バインディング名 `DB`） | Cloudflare のアカウント側（キーはコードに入っていない） |
 | 読者 → Cloudflare | HTTPS | 不要（公開サイト） |
@@ -271,7 +271,36 @@ git で管理しないもの（`.gitignore`）：`dist/`、`.astro/`、`node_mod
 
 ※ 無料枠の数字は変わることがあるので、気になったときは各サービスの公式ページで確認する。
 
-## 8. 今後の候補
+## 8. セキュリティ
+
+2026-10-26 に点検した結果と対策。
+
+### 対策済み
+
+| 項目 | 内容 |
+|---|---|
+| 秘密情報 | リポジトリと過去のコミットに、パスワード・API キー・`.env` はない |
+| コミットのメールアドレス | GitHub の noreply アドレス（本当のアドレスは公開されない） |
+| GitHub の保護機能 | シークレットの検出・プッシュ保護がオン。Dependabot の脆弱性通知がオン |
+| 依存パッケージ | `pnpm audit` で既知の脆弱性なし |
+| 下書き | リポジトリは公開なので、`pnpm blog:publish` は下書きをコミットしない（`--no-drafts`） |
+| 公開ドキュメント | PC のユーザー名・フォルダの場所・OS の細かいバージョンは書かない |
+| HTTPS | Cloudflare が自動で証明書を発行。`.dev` ドメインはブラウザが常に HTTPS で接続する（HSTS プリロード） |
+| ヘッダー | `public/_headers` で、ほかのサイトへの埋め込み禁止（`X-Frame-Options: DENY`、`frame-ancestors 'none'`）、`nosniff`、`Referrer-Policy`、カメラ・マイク・位置情報などの利用禁止（`Permissions-Policy`）を付けている |
+| 訪問者数 API | JSON（`Content-Type: application/json`）以外の POST は断る。パスは 1 ページ 1 つの書き方にそろえてから数え、実在するページだけを数える |
+| ページの中身 | 外部のデータを HTML として差し込む書き方（`set:html`、`innerHTML`）は使っていない |
+
+### 残っているリスク（受け入れているもの）
+
+- **訪問者数の水増し**：API は誰でも呼べるので、プログラムで連打されれば数は増やせる。最悪でも無料枠を使い切ってその日の表示が止まるだけで、料金はかからず、サイトは普通に見られる。止めたくなったら Cloudflare の回数制限（Rate limiting rules）を使う
+- **過去のコミット**：ドキュメントから消した PC の情報は、GitHub の履歴には残っている（消すには履歴の書き換えが必要）
+- **自分のプロフィール**：About や記事に書く個人情報は、公開してよい範囲かを書くときに判断する
+
+### アカウント側でやること（コードでは対策できない）
+
+- GitHub と Cloudflare のアカウントで 2 段階認証をオンにする（乗っ取られるとサイトを書き換えられる）
+
+## 9. 今後の候補
 
 - 独自ドメインを付ける（Cloudflare でドメインを設定 → `astro.config.mjs` の `site` を書き換える）
 - Obsidian 保管庫のバックアップ方法を決める（Obsidian Sync、または保管庫の git 管理）

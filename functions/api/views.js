@@ -32,11 +32,22 @@ function todayJst() {
 	return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
-/** サイト内のパスだけを受け付け、末尾を / にそろえる */
+/**
+ * サイト内のパスだけを受け付け、1 つのページが 1 つの書き方になるようにそろえる。
+ * （/./ や /%62log/ のような書き方の違いで、同じページの行が増えないようにする）
+ */
 function normalizePath(raw) {
-	if (typeof raw !== 'string' || !raw.startsWith('/') || raw.startsWith('//') || raw.length > 300) return null;
-	const path = raw.split(/[?#]/)[0];
-	return path.endsWith('/') ? path : `${path}/`;
+	if (typeof raw !== 'string' || !raw.startsWith('/') || raw.length > 300) return null;
+	let path;
+	try {
+		// . や .. を解決し、不要なエンコードを戻してから、ブラウザと同じ形でエンコードし直す
+		path = encodeURI(decodeURI(new URL(raw, 'https://example.invalid').pathname));
+	} catch {
+		return null;
+	}
+	path = path.replace(/\/{2,}/g, '/');
+	if (!path.endsWith('/')) path += '/';
+	return /^\/[A-Za-z0-9\-._~%/]*$/.test(path) ? path : null;
 }
 
 /** 実在するページか（存在しない URL を大量に送られて表が膨らむのを防ぐ） */
@@ -69,6 +80,10 @@ async function handle({ request, env }, increment) {
 	let path;
 	let newVisit = false;
 	if (increment) {
+		// JSON だけを受け付ける。ほかのサイトのページからこっそり送られる POST（フォームなど）を断るため
+		if (!request.headers.get('Content-Type')?.toLowerCase().startsWith('application/json')) {
+			return json({ error: 'Content-Type は application/json にしてください' }, 415);
+		}
 		const body = await request.json().catch(() => null);
 		path = normalizePath(body?.path);
 		newVisit = body?.newVisit === true;

@@ -43,7 +43,7 @@ sequenceDiagram
 	participant C as Cloudflare Pages
 
 	自分->>P: pnpm blog:publish
-	P->>S: 1. 記事・ページを変換してコピー
+	P->>S: 1. 記事・ページを変換してコピー（下書きは除く）
 	S-->>P: 件数を表示（エラーなら止まる）
 	P->>A: 2. 本番と同じビルドで確認
 	A-->>P: OK（エラーなら止まる）
@@ -61,7 +61,7 @@ sequenceDiagram
 
 | 順番 | 処理 | 失敗したとき |
 |---|---|---|
-| 1 | `node scripts/sync-obsidian.mjs`（下の 3 章） | エラー内容を表示して止まる。何もコミットされない |
+| 1 | `node scripts/sync-obsidian.mjs --no-drafts`（下の 3 章）。下書きはコピーしない | エラー内容を表示して止まる。何もコミットされない |
 | 2 | `pnpm build`（下の 4 章） | 記事の先頭情報の間違いなどで止まる。壊れたまま公開されることはない |
 | 3 | `git add src/content/blog src/content/pages` | — |
 | 4 | 変更があるか確認。なければ終了 | — |
@@ -73,6 +73,8 @@ sequenceDiagram
 - コミットされるのは `src/content/blog` と `src/content/pages` だけ。**コード（デザインや設定）の変更は含まれない**ので、自分で `git add` → `git commit` → `git push` する
 - ただし、実行する前に別のファイルを `git add` してあると、それも一緒にコミットされる
 - Obsidian で記事を消すと、同期で `src/content/` からも消え、そのままコミットされる（公開サイトからも消える）
+- GitHub のリポジトリは公開なので、**下書き（`draft: true` / `publish: false`）はコミットしない**。`draft` を外して公開すると、そのときに初めてコミットされる
+- `pnpm blog:sync`（`--no-drafts` なし）は下書きもコピーする（`pnpm dev` で下書きを見るため）。そのあとに自分で `git add -A` すると下書きもコミットされるので、コードをコミットする前に `pnpm blog:publish` か `node scripts/sync-obsidian.mjs --no-drafts` で下書きを外しておく
 
 ## 3. 変換・コピー（`pnpm blog:sync`）
 

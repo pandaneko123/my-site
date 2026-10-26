@@ -30,7 +30,7 @@ title: 記事タイトル        # 省略時は本文先頭の「# 見出し」�
 description: 説明文        # 省略時は本文の最初の段落
 slug: my-post             # URL（/blog/my-post/）。省略時はファイル名
 updated: 2026-10-20       # 更新日
-draft: true               # true なら公開しない（pnpm dev では表示）
+draft: true               # true なら公開しない（pnpm dev では表示。公開リポジトリにもコミットしない）
 ---
 ```
 
